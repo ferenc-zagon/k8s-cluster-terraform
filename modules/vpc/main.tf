@@ -30,8 +30,8 @@ resource "aws_subnet" "public" {
   map_public_ip_on_launch = true
 
   tags = {
-    Name        = "${var.environment}-public-subnet-${count.index + 1}"
-    Environment = var.environment
+    Name                     = "${var.environment}-public-subnet-${count.index + 1}"
+    Environment              = var.environment
     "kubernetes.io/role/elb" = "1" # EKS / k8s integrációhoz szükséges tag
   }
 }
@@ -43,8 +43,8 @@ resource "aws_subnet" "private" {
   availability_zone = data.aws_availability_zones.available.names[count.index]
 
   tags = {
-    Name        = "${var.environment}-private-subnet-${count.index + 1}"
-    Environment = var.environment
+    Name                         = "${var.environment}-private-subnet-${count.index + 1}"
+    Environment                  = var.environment
     "kubernetes.io/internal-elb" = "1"
   }
 }
