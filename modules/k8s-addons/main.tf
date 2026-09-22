@@ -11,7 +11,7 @@ terraform {
   }
 }
 
-# 1. Metrics Server (HPA és kubectl top parancsokhoz)
+# 1. Metrics Server
 resource "helm_release" "metrics_server" {
   name             = "metrics-server"
   repository       = "https://kubernetes-sigs.github.io/metrics-server/"
@@ -26,7 +26,7 @@ resource "helm_release" "metrics_server" {
   }
 }
 
-# 2. Ingress NGINX Controller (L7 forgalomirányításhoz)
+# 2. Ingress NGINX Controller
 resource "helm_release" "ingress_nginx" {
   name             = "ingress-nginx"
   repository       = "https://kubernetes-github-pages.github.io/ingress-nginx"
@@ -42,5 +42,25 @@ resource "helm_release" "ingress_nginx" {
 
   depends_on = [
     helm_release.metrics_server
+  ]
+}
+
+# 3. ArgoCD (GitOps Controller)
+resource "helm_release" "argocd" {
+  name             = "argocd"
+  repository       = "https://argoproj.github.io/argo-helm"
+  chart            = "argo-cd"
+  namespace        = "argocd"
+  version          = "6.7.11"
+  create_namespace = true
+
+  # Opcionális: Alapértelmezett Ingress vagy NodePort beállítások
+  set {
+    name  = "server.service.type"
+    value = "ClusterIP"
+  }
+
+  depends_on = [
+    helm_release.ingress_nginx
   ]
 }
