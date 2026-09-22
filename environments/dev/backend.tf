@@ -9,7 +9,7 @@ terraform {
   }
 
   backend "s3" {
-    bucket         = "dach-platform-terraform-state-lock"
+    bucket         = "platform-terraform-state-lock"
     key            = "k8s-platform/dev/terraform.tfstate"
     region         = "eu-central-1"
     dynamodb_table = "terraform-state-locks"
