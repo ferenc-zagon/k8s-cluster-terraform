@@ -11,7 +11,7 @@ terraform {
   }
 }
 
-# 1. Metrics Server
+# 1. Metrics Server (Production-Ready TLS Konfiguráció)
 resource "helm_release" "metrics_server" {
   name             = "metrics-server"
   repository       = "https://kubernetes-sigs.github.io/metrics-server/"
@@ -20,9 +20,15 @@ resource "helm_release" "metrics_server" {
   version          = "3.12.1"
   create_namespace = false
 
+  # Privát IP alapú kommunikáció a Kubelet felé (EKS Best Practice)
   set {
     name  = "args[0]"
-    value = "--kubelet-insecure-tls"
+    value = "--kubelet-preferred-address-types=InternalIP,ExternalIP,Hostname"
+  }
+
+  set {
+    name  = "args[1]"
+    value = "--kubelet-port=10250"
   }
 }
 
@@ -54,7 +60,6 @@ resource "helm_release" "argocd" {
   version          = "6.7.11"
   create_namespace = true
 
-  # Opcionális: Alapértelmezett Ingress vagy NodePort beállítások
   set {
     name  = "server.service.type"
     value = "ClusterIP"
