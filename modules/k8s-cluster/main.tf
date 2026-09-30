@@ -112,3 +112,32 @@ resource "aws_eks_node_group" "main" {
     aws_iam_role_policy_attachment.node_amazon_ec2_container_registry_read_only
   ]
 }
+
+#karpenter
+resource "helm_release" "karpenter" {
+  name             = "karpenter"
+  repository       = "oci://public.ecr.aws/karpenter"
+  chart            = "karpenter"
+  namespace        = "kube-system"
+  version          = "1.0.1"
+  create_namespace = false
+
+  set {
+    name  = "settings.clusterName"
+    value = var.cluster_name
+  }
+
+  set {
+    name  = "settings.clusterEndpoint"
+    value = var.cluster_endpoint
+  }
+
+  set {
+    name  = "serviceAccount.annotations.eks\\.amazonaws\\.com/role-arn"
+    value = var.karpenter_controller_role_arn
+  }
+
+  depends_on = [
+    helm_release.metrics_server
+  ]
+}
