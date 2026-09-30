@@ -1,6 +1,7 @@
 variable "aws_region" {
   type        = string
   description = "Target AWS region for infrastructure deployment."
+  default     = "eu-central-1"
 }
 
 variable "environment" {
