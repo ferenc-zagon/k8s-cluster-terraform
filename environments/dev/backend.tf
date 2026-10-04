@@ -12,7 +12,7 @@ terraform {
     bucket         = "platform-terraform-state-lock"
     key            = "k8s-platform/dev/terraform.tfstate"
     region         = "eu-central-1"
-    dynamodb_table = "terraform-state-locks"
+    use_lockfile   = true
     encrypt        = true
   }
 }
