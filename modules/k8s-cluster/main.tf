@@ -137,7 +137,4 @@ resource "helm_release" "karpenter" {
     value = var.karpenter_controller_role_arn
   }
 
-  depends_on = [
-    helm_release.metrics_server
-  ]
 }
