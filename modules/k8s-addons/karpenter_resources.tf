@@ -7,7 +7,7 @@ resource "kubernetes_manifest" "karpenter_node_class" {
     }
     spec = {
       amiFamily = "AL2023"
-      role      = var.karpenter_node_role_name
+      role = aws_iam_role.karpenter_node.name
 
       subnetSelectorTerms = [
         {
