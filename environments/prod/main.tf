@@ -6,6 +6,7 @@ module "vpc" {
   source = "../../modules/vpc"
 
   environment          = "prod"
+  cluster_name         = "prod-k8s-cluster"
   aws_region           = "eu-central-1"
   vpc_cidr             = "10.200.0.0/16"
   public_subnet_cidrs  = ["10.200.1.0/24", "10.200.2.0/24", "10.200.3.0/24"]
@@ -66,6 +67,8 @@ module "k8s_addons" {
   cluster_certificate_authority_data = module.k8s_cluster.cluster_certificate_authority_data
   karpenter_node_role_name           = module.k8s_cluster.karpenter_node_role_name
   karpenter_controller_role_arn      = module.k8s_cluster.karpenter_controller_role_arn
+  gitops_repo_url                    = "https://github.com/ferenc-zagon/Terraform-lab.git"
+  gitops_repo_revision               = "master"
 
   depends_on = [module.k8s_cluster]
 }

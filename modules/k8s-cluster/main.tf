@@ -43,8 +43,7 @@ resource "aws_security_group" "cluster" {
   }
 
   tags = {
-    Environment              = var.environment
-    "karpenter.sh/discovery" = "${var.environment}-k8s-cluster"
+    Environment = var.environment
   }
 }
 
@@ -58,9 +57,26 @@ resource "aws_eks_cluster" "main" {
     security_group_ids = [aws_security_group.cluster.id]
   }
 
+  access_config {
+    authentication_mode                         = "API_AND_CONFIG_MAP"
+    bootstrap_cluster_creator_admin_permissions = true
+  }
+
   depends_on = [
     aws_iam_role_policy_attachment.cluster_amazon_eks_cluster_policy
   ]
+}
+
+resource "aws_ec2_tag" "cluster_primary_security_group" {
+  resource_id = aws_eks_cluster.main.vpc_config[0].cluster_security_group_id
+  key         = "karpenter.sh/discovery"
+  value       = "${var.environment}-k8s-cluster"
+}
+
+resource "aws_eks_access_entry" "karpenter_node" {
+  cluster_name  = aws_eks_cluster.main.name
+  principal_arn = aws_iam_role.karpenter_node.arn
+  type          = "EC2_LINUX"
 }
 
 resource "aws_iam_role" "node" {

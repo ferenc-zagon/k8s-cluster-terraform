@@ -63,14 +63,11 @@ resource "terraform_data" "karpenter_cr_cleanup" {
     command     = <<-EOT
       set -e
       echo "==> [Karpenter Cleanup] Deleting NodePool..."
-      kubectl delete nodepool default --ignore-not-found --wait=true --timeout=60s
+      kubectl delete nodepool default --ignore-not-found --wait=true --timeout=45s || true
 
       echo "==> [Karpenter Cleanup] Deleting EC2NodeClass (finalizer processed by Karpenter controller)..."
-      kubectl delete ec2nodeclass default --ignore-not-found
-
-      echo "==> [Karpenter Cleanup] Waiting for EC2NodeClass finalizer to complete..."
-      kubectl wait --for=delete ec2nodeclass/default --timeout=90s \
-        2>/dev/null || echo "EC2NodeClass already removed."
+      kubectl delete ec2nodeclass default --ignore-not-found --wait=true --timeout=60s || \
+        kubectl patch ec2nodeclass default -p '{"metadata":{"finalizers":null}}' --type=merge 2>/dev/null || true
 
       echo "==> [Karpenter Cleanup] Complete."
     EOT
