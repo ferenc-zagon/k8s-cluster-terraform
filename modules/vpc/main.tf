@@ -42,11 +42,14 @@ resource "aws_subnet" "private" {
   cidr_block        = var.private_subnet_cidrs[count.index]
   availability_zone = data.aws_availability_zones.available.names[count.index]
 
-  tags = {
-    Name                         = "${var.environment}-private-subnet-${count.index + 1}"
-    Environment                  = var.environment
-    "kubernetes.io/internal-elb" = "1"
-  }
+  tags = merge(
+    {
+      Name                         = "${var.environment}-private-subnet-${count.index + 1}"
+      Environment                  = var.environment
+      "kubernetes.io/internal-elb" = "1"
+    },
+    var.cluster_name != "" ? { "karpenter.sh/discovery" = var.cluster_name } : {}
+  )
 }
 
 resource "aws_eip" "nat" {

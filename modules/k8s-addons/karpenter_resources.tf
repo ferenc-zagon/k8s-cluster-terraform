@@ -1,78 +1,80 @@
-resource "kubernetes_manifest" "karpenter_node_class" {
-  manifest = {
-    apiVersion = "karpenter.k8s.aws/v1"
-    kind       = "EC2NodeClass"
+# ArgoCD Application managing Karpenter CRs from GitOps
+# cascade delete finalizer ensures clean teardown
+resource "kubectl_manifest" "karpenter_argocd_app" {
+  yaml_body = yamlencode({
+    apiVersion = "argoproj.io/v1alpha1"
+    kind       = "Application"
     metadata = {
-      name = "default"
+      name      = "karpenter-resources"
+      namespace = "argocd"
+      finalizers = ["resources-finalizer.argocd.argoproj.io"]
+      annotations = {
+        "argocd.argoproj.io/sync-wave" = "1"
+      }
     }
     spec = {
-      amiFamily = "AL2023"
-      role = aws_iam_role.karpenter_node.name
-
-      subnetSelectorTerms = [
-        {
-          tags = {
-            "karpenter.sh/discovery" = var.cluster_name
-          }
+      project = "default"
+      source = {
+        repoURL        = var.gitops_repo_url
+        targetRevision = var.gitops_repo_revision
+        path           = "gitops/platform/karpenter"
+      }
+      destination = {
+        server    = "https://kubernetes.default.svc"
+        namespace = "default"
+      }
+      syncPolicy = {
+        automated = {
+          prune    = false # NEVER auto-prune Karpenter CRs
+          selfHeal = true
         }
-      ]
-
-      securityGroupSelectorTerms = [
+        syncOptions = ["CreateNamespace=false"]
+      }
+      ignoreDifferences = [
         {
-          tags = {
-            "karpenter.sh/discovery" = var.cluster_name
-          }
-        }
-      ]
-    }
-  }
-
-  depends_on = [helm_release.karpenter]
-}
-
-resource "kubernetes_manifest" "karpenter_node_pool" {
-  manifest = {
-    apiVersion = "karpenter.sh/v1"
-    kind       = "NodePool"
-    metadata = {
-      name = "default"
-    }
-    spec = {
-      template = {
-        spec = {
-          nodeClassRef = {
-            group = "karpenter.k8s.aws"
-            kind  = "EC2NodeClass"
-            name  = "default"
-          }
-          requirements = [
-            {
-              key      = "karpenter.sh/capacity-type"
-              operator = "In"
-              values   = ["spot", "on-demand"]
-            },
-            {
-              key      = "kubernetes.io/arch"
-              operator = "In"
-              values   = ["amd64"]
-            },
-            {
-              key      = "karpenter.k8s.aws/instance-category"
-              operator = "In"
-              values   = ["c", "m", "r"]
-            }
+          group = "karpenter.k8s.aws"
+          kind  = "EC2NodeClass"
+          jsonPointers = [
+            "/spec/metadataOptions",
+            "/spec/kubelet"
           ]
         }
-      }
-      limits = {
-        cpu = "100"
-      }
-      disruption = {
-        consolidationPolicy = "WhenEmpty"
-        consolidateAfter    = "30s"
-      }
+      ]
     }
+  })
+
+  depends_on = [
+    helm_release.karpenter,
+    helm_release.argocd,
+  ]
+}
+
+# Destroy-time provisioner: ensures clean teardown ordering
+# Terraform destroy order (reverse of depends_on):
+#   1. karpenter_cr_cleanup runs (deletes NodePool + EC2NodeClass, waits for finalizers)
+#   2. karpenter_argocd_app is deleted
+#   3. helm_release.karpenter is uninstalled (Karpenter controller stops)
+resource "terraform_data" "karpenter_cr_cleanup" {
+  triggers_replace = [helm_release.karpenter.id]
+
+  provisioner "local-exec" {
+    when        = destroy
+    interpreter = ["/bin/bash", "-c"]
+    command     = <<-EOT
+      set -e
+      echo "==> [Karpenter Cleanup] Deleting NodePool..."
+      kubectl delete nodepool default --ignore-not-found --wait=true --timeout=60s
+
+      echo "==> [Karpenter Cleanup] Deleting EC2NodeClass (finalizer processed by Karpenter controller)..."
+      kubectl delete ec2nodeclass default --ignore-not-found
+
+      echo "==> [Karpenter Cleanup] Waiting for EC2NodeClass finalizer to complete..."
+      kubectl wait --for=delete ec2nodeclass/default --timeout=90s \
+        2>/dev/null || echo "EC2NodeClass already removed."
+
+      echo "==> [Karpenter Cleanup] Complete."
+    EOT
   }
 
-  depends_on = [kubernetes_manifest.karpenter_node_class]
+  depends_on = [kubectl_manifest.karpenter_argocd_app]
 }

@@ -8,34 +8,74 @@ terraform {
       source  = "hashicorp/helm"
       version = "~> 2.12.0"
     }
+    kubectl = {
+      source  = "gavinbunney/kubectl"
+      version = ">= 1.14.0"
+    }
   }
 }
 
-# 1. Metrics Server (Production-Ready TLS Konfiguráció)
-resource "helm_release" "metrics_server" {
-  name             = "metrics-server"
-  repository       = "https://kubernetes-sigs.github.io/metrics-server/"
-  chart            = "metrics-server"
+data "aws_region" "current" {}
+
+# 1. Karpenter (Cluster Autoscaling Controller)
+resource "helm_release" "karpenter" {
+  name             = "karpenter"
+  repository       = "oci://public.ecr.aws/karpenter"
+  chart            = "karpenter"
   namespace        = "kube-system"
-  version          = "3.12.1"
+  version          = "1.0.1"
   create_namespace = false
 
-  # Privát IP alapú kommunikáció a Kubelet felé (EKS Best Practice)
-  set {
-    name  = "args[0]"
-    value = "--kubelet-preferred-address-types=InternalIP,ExternalIP,Hostname"
-  }
+  values = [
+    yamlencode({
+      settings = {
+        clusterName     = var.cluster_name
+        clusterEndpoint = var.cluster_endpoint
+        aws = {
+          region = data.aws_region.current.region
+        }
+      }
+      serviceAccount = {
+        annotations = {
+          "eks.amazonaws.com/role-arn" = var.karpenter_controller_role_arn
+        }
+      }
+      env = [
+        {
+          name  = "AWS_REGION"
+          value = data.aws_region.current.region
+        },
+        {
+          name  = "AWS_DEFAULT_REGION"
+          value = data.aws_region.current.region
+        }
+      ]
+    })
+  ]
+}
 
-  set {
-    name  = "args[1]"
-    value = "--kubelet-port=10250"
-  }
+# 2. Metrics Server
+resource "helm_release" "metrics_server" {
+  name       = "metrics-server"
+  repository = "https://kubernetes-sigs.github.io/metrics-server/"
+  chart      = "metrics-server"
+  namespace  = "kube-system"
+  version    = "3.12.1"
+
+  values = [
+    yamlencode({
+      args = [
+        "--kubelet-insecure-tls",
+        "--kubelet-preferred-address-types=InternalIP,ExternalIP,Hostname"
+      ]
+    })
+  ]
 }
 
 # 2. Ingress NGINX Controller
 resource "helm_release" "ingress_nginx" {
   name             = "ingress-nginx"
-  repository       = "https://kubernetes-github-pages.github.io/ingress-nginx"
+  repository       = "https://kubernetes.github.io/ingress-nginx"
   chart            = "ingress-nginx"
   namespace        = "ingress-nginx"
   version          = "4.10.0"

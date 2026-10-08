@@ -7,6 +7,8 @@ terraform {
   }
 }
 
+data "aws_region" "current" {}
+
 resource "aws_iam_role" "cluster" {
   name = "${var.environment}-eks-cluster-role"
 
@@ -41,7 +43,8 @@ resource "aws_security_group" "cluster" {
   }
 
   tags = {
-    Environment = var.environment
+    Environment              = var.environment
+    "karpenter.sh/discovery" = "${var.environment}-k8s-cluster"
   }
 }
 
@@ -97,6 +100,7 @@ resource "aws_eks_node_group" "main" {
   node_group_name = "${var.environment}-node-group"
   node_role_arn   = aws_iam_role.node.arn
   subnet_ids      = var.subnet_ids
+  ami_type        = "AL2023_x86_64_STANDARD"
 
   scaling_config {
     desired_size = 2
@@ -111,30 +115,4 @@ resource "aws_eks_node_group" "main" {
     aws_iam_role_policy_attachment.node_amazon_eks_cni_policy,
     aws_iam_role_policy_attachment.node_amazon_ec2_container_registry_read_only
   ]
-}
-
-#karpenter
-resource "helm_release" "karpenter" {
-  name             = "karpenter"
-  repository       = "oci://public.ecr.aws/karpenter"
-  chart            = "karpenter"
-  namespace        = "kube-system"
-  version          = "1.0.1"
-  create_namespace = false
-
-  set {
-    name  = "settings.clusterName"
-    value = var.cluster_name
-  }
-
-  set {
-    name  = "settings.clusterEndpoint"
-    value = var.cluster_endpoint
-  }
-
-  set {
-    name  = "serviceAccount.annotations.eks\\.amazonaws\\.com/role-arn"
-    value = var.karpenter_controller_role_arn
-  }
-
 }

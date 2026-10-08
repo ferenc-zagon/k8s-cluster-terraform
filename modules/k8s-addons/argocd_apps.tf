@@ -1,5 +1,5 @@
-resource "kubernetes_manifest" "argocd_root_app" {
-  manifest = {
+resource "kubectl_manifest" "argocd_root_app" {
+  yaml_body = yamlencode({
     apiVersion = "argoproj.io/v1alpha1"
     kind       = "Application"
     metadata = {
@@ -24,7 +24,7 @@ resource "kubernetes_manifest" "argocd_root_app" {
         }
       }
     }
-  }
+  })
 
   depends_on = [helm_release.argocd]
 }

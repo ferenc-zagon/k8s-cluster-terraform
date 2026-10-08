@@ -24,3 +24,13 @@ variable "gitops_repo_revision" {
   description = "Target branch/commit for ArgoCD"
   default     = "HEAD"
 }
+
+variable "karpenter_node_role_name" {
+  type        = string
+  description = "Karpenter node IAM role name"
+}
+
+variable "karpenter_controller_role_arn" {
+  type        = string
+  description = "IAM Role ARN for Karpenter Controller"
+}

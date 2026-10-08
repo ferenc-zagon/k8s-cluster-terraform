@@ -1,0 +1,17 @@
+apiVersion: karpenter.k8s.aws/v1
+kind: EC2NodeClass
+metadata:
+  name: default
+spec:
+  # AL2023 az AWS EKS ajánlott ami-ja Karpenter v1+ esetén
+  amiSelectorTerms:
+    - alias: al2023@latest
+  # Az IAM role neve environment-specifikus — dev overlay írja felül prod esetén
+  role: karpenter-node-role-dev
+  subnetSelectorTerms:
+    - tags:
+        karpenter.sh/discovery: dev-k8s-cluster
+  securityGroupSelectorTerms:
+    - tags:
+        karpenter.sh/discovery: dev-k8s-cluster
+

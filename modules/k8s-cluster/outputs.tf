@@ -17,3 +17,13 @@ output "cluster_certificate_authority_data" {
   description = "Base64 encoded certificate data required to communicate with the cluster"
   value       = aws_eks_cluster.main.certificate_authority[0].data
 }
+
+output "karpenter_node_role_name" {
+  description = "Karpenter node IAM role name"
+  value       = aws_iam_role.karpenter_node.name
+}
+
+output "karpenter_controller_role_arn" {
+  description = "IAM Role ARN for Karpenter Controller"
+  value       = aws_iam_role.karpenter_controller.arn
+}
