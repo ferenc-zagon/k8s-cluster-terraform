@@ -1,4 +1,4 @@
-# Enterprise Kubernetes Platform on AWS (EKS & GitOps)
+# Production-Grade, Cost-Optimized Kubernetes Platform on AWS (EKS & GitOps)
 
 [![Terraform](https://img.shields.io/badge/Terraform-1.16+-844FBA?logo=terraform&logoColor=white)](https://www.terraform.io/)
 [![AWS EKS](https://img.shields.io/badge/AWS%20EKS-1.30-FF9900?logo=amazon-aws&logoColor=white)](https://aws.amazon.com/eks/)
@@ -6,7 +6,7 @@
 [![ArgoCD](https://img.shields.io/badge/GitOps-ArgoCD-EF7B42?logo=argo&logoColor=white)](https://argo-cd.readthedocs.io/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 
-Production-grade, multi-environment Kubernetes platform provisioned via **Terraform** and managed through **GitOps (ArgoCD)** on AWS. Built according to enterprise cloud architecture standards (strict network segmentation, IRSA least-privilege, native EKS Access Entries, sub-minute Karpenter autoscaling, and zero-touch lifecycle teardown).
+Production-grade, cost-optimized multi-environment Kubernetes platform provisioned via **Terraform** and managed through **GitOps (ArgoCD)** on AWS. Engineered for high performance, lean operational overhead, and FinOps efficiency (strict network segmentation, IRSA least-privilege, native EKS Access Entries, sub-minute Karpenter Spot autoscaling with automatic node consolidation, and zero-touch lifecycle teardown).
 
 ---
 
@@ -66,7 +66,7 @@ flowchart TD
 - **GitOps-Managed Karpenter Platform CRs:** Karpenter `NodePool` and `EC2NodeClass` resources are treated as declarative platform manifests within `gitops/platform/karpenter/` and orchestrated via an ArgoCD Application (`karpenter-resources`).
 - **Accidental Deletion Shield:** Critical cluster infrastructure manifests use `prune: false` within GitOps to prevent catastrophic node teardown from accidental Git commits.
 
-### 3. Enterprise Security & Identity
+### 3. Cloud Security, Identity & Access Control
 - **Native EKS Access Entries (EKS 1.30):** Operates with `authentication_mode = "API_AND_CONFIG_MAP"`, eliminating reliance on the legacy `aws-auth` ConfigMap for node join. Karpenter dynamically-provisioned nodes authenticate natively using an AWS-native `aws_eks_access_entry` resource (`type = "EC2_LINUX"`), while system nodes are managed natively by AWS EKS Managed Node Groups.
 - **IAM Roles for Service Accounts (IRSA):** OIDC-federated role bindings ensure the Karpenter controller only possesses least-privilege IAM permissions without hardcoded secrets or static node-level rights.
 - **Security Group Isolation:** Karpenter nodes inherit the EKS Primary Cluster Security Group via discovery tags (`karpenter.sh/discovery`), guaranteeing secure intra-cluster (kubelet port 10250) and control-plane communication without exposing ports to the public internet.
@@ -84,9 +84,9 @@ flowchart TD
 ```text
 .
 ├── bootstrap/                      # Remote State Storage Bootstrapping
-│   ├── main.tf                     # S3 State Bucket (versioning, AES256, public access block) & DynamoDB Table
+│   ├── main.tf                     # S3 State Bucket (versioning, AES256, public access block)
 │   ├── variables.tf                # Region & bucket naming variables
-│   └── outputs.tf                  # S3 bucket and DynamoDB table names
+│   └── outputs.tf                  # S3 state bucket name identifier
 │
 ├── environments/
 │   ├── dev/                        # Development Environment
@@ -234,7 +234,7 @@ terraform destroy -auto-approve
 
 ---
 
-## 🛡️ Enterprise Engineering Best Practices Implemented
+## 🛡️ Engineering Best Practices & Operational Excellence
 
 - ✅ **Immutable Infrastructure as Code & Deterministic Versioning:** Pinned AWS provider (`aws = "= 6.64.0"`), exact provider versions locked via `.terraform.lock.hcl` (`aws 6.64.0`, `helm 2.12.1`, `kubernetes 3.3.0`, `kubectl 1.19.0`), and strictly pinned Helm chart releases (`karpenter 1.0.1`, `metrics-server 3.12.1`, `ingress-nginx 4.10.0`, `argo-cd 6.7.11`).
 - ✅ **State Locking:** Utilizes S3 native state locking (`use_lockfile = true`) for concurrent execution safety without requiring additional DynamoDB overhead.
